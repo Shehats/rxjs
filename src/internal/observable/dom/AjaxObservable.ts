@@ -5,8 +5,7 @@ import { Observable } from '../../Observable';
 import { Subscriber } from '../../Subscriber';
 import { TeardownLogic } from '../../types';
 import { map } from '../../operators/map';
-import { AjaxConfig, reduceResponseInterceptors } from 'rxjs/internal/observable/dom/ajaxExt';
-import { reduceRequestInterceptors } from './ajaxExt';
+import { AjaxConfig, reduceResponseInterceptors, reduceRequestInterceptors } from './ajaxExt';
 
 export interface AjaxRequest {
   url?: string;

@@ -1,12 +1,12 @@
 import { AjaxRequest, AjaxResponse, AjaxError } from 'rxjs/Rx';
 import { isArray } from '../../util/isArray';
-import { onErrorResumeNextStatic } from 'rxjs/internal/operators/onErrorResumeNext';
 
 export type AjaxRequestInterceptor = ((req: AjaxRequest) => AjaxRequest);
 
 export type AjaxResponseInterceptor = ((res: AjaxResponse) => AjaxResponse);
 
-export type AjaxConfigCreationMethod = ((...args: any[]) => AjaxConfig);
+export type AjaxConfigCreationMethod = ((requestInterceptors?: AjaxRequestInterceptor|AjaxRequestInterceptor[],
+                                         responseInterceptors?: AjaxResponseInterceptor|AjaxResponseInterceptor[]) => AjaxConfig);
 
 export class AjaxConfig {
   private static _instance: AjaxConfig = null;

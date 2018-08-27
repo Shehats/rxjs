@@ -1,5 +1,6 @@
 import {  AjaxObservable, AjaxCreationMethod  } from './AjaxObservable';
-import { AjaxConfig, AjaxConfigCreationMethod } from 'rxjs/internal/observable/dom/ajaxExt';
+import { AjaxConfig, AjaxConfigCreationMethod } from './ajaxExt';
+
 /**
  * There is an ajax operator on the Rx object.
  *
@@ -18,5 +19,40 @@ import { AjaxConfig, AjaxConfigCreationMethod } from 'rxjs/internal/observable/d
  * ```
  */
 export const ajax: AjaxCreationMethod = AjaxObservable.create;
-
+/**
+ * There is global ajax Interceptors configurations singleton in RX
+ *
+ * It creates a singleton wrapper for ajax interceptor configurations. It takes an array of
+ * iterceptors or just interceptors for intercepting the request and the response.
+ *
+ * import { ajaxInterceptors } from 'rxjs/ajax';
+ *
+ * const ajaxConfig = ajaxInterceptors((req: AjaxRequest) => {
+ *  req.headers = {...req.headers, Authorization: 'sdkjfkdfdfkdfdfdkdffdfd'};
+ *  return req;
+ * }, (res: AjaxResponse) => {
+ *  // Do something with the response data (cache it for example)
+ *  return res;
+ * })
+ *
+ * Or another usage:
+ *
+ * const ajaxConfig = ajaxInterceptors([(req: AjaxRequest) => {
+ *  req.headers = {...req.headers, Authorization: 'sdkjfkdfdfkdfdfdkdffdfd'};
+ *  return req;
+ * }], [(res: AjaxResponse) => {
+ *  // Do something with the response data (cache it for example)
+ *  return res;]
+ * })
+ *
+ * Or another usage:
+ * const ajaxConfig = ajaxInterceptors();
+ *
+ * More interceptors can be added later:
+ *
+ * ajaxConfig.addGetRequestInterceptor(AjaxRequestInterceptor or AjaxRequestInterceptor[])
+ *
+ * And the same can be done with all of the rest of the Requests.
+ */
+export { AjaxRequestInterceptor, AjaxResponseInterceptor } from './ajaxExt';
 export const ajaxInterceptors: AjaxConfigCreationMethod = AjaxConfig.create;
