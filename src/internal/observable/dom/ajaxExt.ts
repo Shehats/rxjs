@@ -1,12 +1,15 @@
 import { AjaxRequest, AjaxResponse, AjaxError } from 'rxjs/Rx';
 import { isArray } from '../../util/isArray';
+import { onErrorResumeNextStatic } from 'rxjs/internal/operators/onErrorResumeNext';
 
-export type AjaxRequestInterceptor = ((req: AjaxRequest|AjaxError, config?: any, ...vargs: any[]) => AjaxRequest|AjaxError);
+export type AjaxRequestInterceptor = ((req: AjaxRequest) => AjaxRequest);
 
-export type AjaxResponseInterceptor = ((req: AjaxResponse|AjaxError, config?: any, ...vargs: any[]) => AjaxResponse|AjaxError);
+export type AjaxResponseInterceptor = ((res: AjaxResponse) => AjaxResponse);
+
+export type AjaxConfigCreationMethod = ((...args: any[]) => AjaxConfig);
 
 export class AjaxConfig {
-  private static _instance: AjaxConfig;
+  private static _instance: AjaxConfig = null;
   // Shared interceptors.
   private _requestInterceptors: AjaxRequestInterceptor[];
   private _responseInterceptors: AjaxResponseInterceptor[];
@@ -22,17 +25,27 @@ export class AjaxConfig {
   // Delete request interceptors.
   private _deleteRequestInterceptors: AjaxRequestInterceptor[];
   private _deleteResponseInterceptors: AjaxResponseInterceptor[];
-  // Options request interceptors.
-  private _optionsRequestInterceptors: AjaxRequestInterceptor[];
-  private _optionsResponseInterceptors: AjaxResponseInterceptor[];
-  // Trace request interceptors.
-  private _traceRequestInterceptors: AjaxRequestInterceptor[];
-  private _traceResponseInterceptors: AjaxResponseInterceptor[];
 
   private constructor (requestInterceptors?: AjaxRequestInterceptor|AjaxRequestInterceptor[],
                        responseInterceptors?: AjaxResponseInterceptor|AjaxResponseInterceptor[]) {
-    this._requestInterceptors = (requestInterceptors) ? (isArray(requestInterceptors)) ? requestInterceptors : [requestInterceptors] : [];
-    this._responseInterceptors = (responseInterceptors) ? (isArray(responseInterceptors)) ? responseInterceptors : [responseInterceptors] : [];
+    if (isArray(requestInterceptors)) {
+      this._requestInterceptors = requestInterceptors;
+    } else {
+      this._requestInterceptors = (requestInterceptors) ? [requestInterceptors] : [];
+    }
+    if (isArray(responseInterceptors)) {
+      this._responseInterceptors = responseInterceptors;
+    } else {
+      this._responseInterceptors = (responseInterceptors) ? [responseInterceptors] : [];
+    }
+    this._getRequestInterceptors = [];
+    this._getResponseInterceptors = [];
+    this._postRequestInterceptors = [];
+    this._postResponseInterceptors = [];
+    this._putRequestInterceptors = [];
+    this._putResponseInterceptors = [];
+    this._deleteRequestInterceptors = [];
+    this._deleteResponseInterceptors = [];
   }
 
   public static create (requestInterceptors?: AjaxRequestInterceptor|AjaxRequestInterceptor[],
@@ -120,47 +133,19 @@ export class AjaxConfig {
     }
   }
 
-  public addOptionsRequestInterceptor(interceptors: AjaxRequestInterceptor|AjaxRequestInterceptor[]) {
-    if (isArray(interceptors)) {
-      this._optionsRequestInterceptors.concat(interceptors);
-    } else {
-      this._optionsRequestInterceptors.push(interceptors);
-    }
-  }
-
-  public addOptionsResponseInterceptor(interceptors: AjaxResponseInterceptor|AjaxResponseInterceptor[]) {
-    if (isArray(interceptors)) {
-      this._optionsResponseInterceptors.concat(interceptors);
-    } else {
-      this._optionsResponseInterceptors.push(interceptors);
-    }
-  }
-
-  public addTraceRequestInterceptor(interceptors: AjaxRequestInterceptor|AjaxRequestInterceptor[]) {
-    if (isArray(interceptors)) {
-      this._traceRequestInterceptors.concat(interceptors);
-    } else {
-      this._traceRequestInterceptors.push(interceptors);
-    }
-  }
-
-  public addTraceResponseInterceptor(interceptors: AjaxResponseInterceptor|AjaxResponseInterceptor[]) {
-    if (isArray(interceptors)) {
-      this._traceResponseInterceptors.concat(interceptors);
-    } else {
-      this._traceResponseInterceptors.push(interceptors);
-    }
-  }
-
   public static Instance () {
     return AjaxConfig._instance || (AjaxConfig._instance = new AjaxConfig());
   }
 
-  public RequestInterceptors () {
+  public static hasInstance () {
+    return AjaxConfig._instance !== null;
+  }
+
+  public RequestInterceptors (): AjaxRequestInterceptor[] {
     return this._requestInterceptors;
   }
 
-  public ResponseInterceptors () {
+  public ResponseInterceptors (): AjaxResponseInterceptor[] {
     return this._responseInterceptors;
   }
 
@@ -195,20 +180,54 @@ export class AjaxConfig {
   public DeleteResponseInterceptors () {
     return this._deleteResponseInterceptors;
   }
-
-  public OptionsRequestInterceptors () {
-    return this._optionsRequestInterceptors;
-  }
-
-  public OptionsResponseInterceptors () {
-    return this._optionsResponseInterceptors;
-  }
-
-  public TraceRequestInterceptors () {
-    return this._traceRequestInterceptors;
-  }
-
-  public TraceResponseInterceptors () {
-    return this._traceResponseInterceptors;
-  }
 }
+
+const execRequestInterceptors = (ajaxRequest: AjaxRequest, interceptors: AjaxRequestInterceptor[]): AjaxRequest => {
+  let req = ajaxRequest;
+  interceptors.forEach(interceptor => {
+    req = interceptor(req);
+  });
+  return req;
+};
+
+const execResponseInterceptors = (ajaxResponse: AjaxResponse, interceptors: AjaxResponseInterceptor[]): AjaxResponse => {
+  let res = ajaxResponse;
+  interceptors.forEach(interceptor => {
+    res = interceptor(res);
+  });
+  return res;
+};
+
+export const reduceRequestInterceptors = (ajaxRequest: AjaxRequest): AjaxRequest => {
+  let req = ajaxRequest;
+  req = execRequestInterceptors(req, AjaxConfig.Instance().RequestInterceptors());
+  switch (ajaxRequest.method) {
+    case 'GET':
+      return execRequestInterceptors(req, AjaxConfig.Instance().GetRequestInterceptors());
+    case 'POST':
+      return execRequestInterceptors(req, AjaxConfig.Instance().PostRequestInterceptors());
+    case 'PUT':
+      return execRequestInterceptors(req, AjaxConfig.Instance().PutRequestInterceptors());
+    case 'DELETE':
+      return execRequestInterceptors(req, AjaxConfig.Instance().DeleteRequestInterceptors());
+    default:
+      return req;
+  }
+};
+
+export const reduceResponseInterceptors = (ajaxResponse: AjaxResponse): AjaxResponse => {
+  let res = ajaxResponse;
+  res = execResponseInterceptors(res, AjaxConfig.Instance().ResponseInterceptors());
+  switch (ajaxResponse.request.method) {
+    case 'GET':
+      return execResponseInterceptors(res, AjaxConfig.Instance().GetResponseInterceptors());
+    case 'POST':
+      return execResponseInterceptors(res, AjaxConfig.Instance().PostResponseInterceptors());
+    case 'PUT':
+      return execResponseInterceptors(res, AjaxConfig.Instance().PutResponseInterceptors());
+    case 'DELETE':
+      return execResponseInterceptors(res, AjaxConfig.Instance().DeleteResponseInterceptors());
+    default:
+      return res;
+  }
+};

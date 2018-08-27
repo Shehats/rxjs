@@ -5,6 +5,8 @@ import { Observable } from '../../Observable';
 import { Subscriber } from '../../Subscriber';
 import { TeardownLogic } from '../../types';
 import { map } from '../../operators/map';
+import { AjaxConfig, reduceResponseInterceptors } from 'rxjs/internal/observable/dom/ajaxExt';
+import { reduceRequestInterceptors } from './ajaxExt';
 
 export interface AjaxRequest {
   url?: string;
@@ -214,13 +216,24 @@ export class AjaxSubscriber<T> extends Subscriber<Event> {
     // properly serialize body
     request.body = this.serializeBody(request.body, request.headers['Content-Type']);
 
+    // Alter the request here before sending.
+    if (AjaxConfig.hasInstance()) {
+      request = reduceRequestInterceptors(request);
+    }
+
     this.send();
   }
 
   next(e: Event): void {
     this.done = true;
     const { xhr, request, destination } = this;
-    const response = new AjaxResponse(e, xhr, request);
+    let response = new AjaxResponse(e, xhr, request);
+
+    // Modify the response.
+    if (AjaxConfig.hasInstance()) {
+      response = reduceResponseInterceptors(response);
+    }
+
     if (response.response === errorObject) {
       destination.error(errorObject.e);
     } else {

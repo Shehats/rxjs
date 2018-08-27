@@ -1,4 +1,5 @@
 import {  AjaxObservable, AjaxCreationMethod  } from './AjaxObservable';
+import { AjaxConfig, AjaxConfigCreationMethod } from 'rxjs/internal/observable/dom/ajaxExt';
 /**
  * There is an ajax operator on the Rx object.
  *
@@ -17,3 +18,5 @@ import {  AjaxObservable, AjaxCreationMethod  } from './AjaxObservable';
  * ```
  */
 export const ajax: AjaxCreationMethod = AjaxObservable.create;
+
+export const ajaxInterceptors: AjaxConfigCreationMethod = AjaxConfig.create;
